@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Tasks</title>
+  <style>
+    /* Reset and base styles */
+    body {
+      background-color: #f0f0f5;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #333;
+    }
+
+    /* Flat paper design container */
+    .paper-container {
+      background-color: #ffffff;
+      width: 100%;
+      max-width: 600px;
+      min-height: 80vh;
+      padding: 40px;
+      border: 1px solid #e0e0e0;
+      /* Subtle solid shadow for a flat paper feel */
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.05); 
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      border-bottom: 2px solid #f0f0f5;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    /* Task input field */
+    .task-input {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-bottom: 2px dashed #ccc;
+      font-size: 16px;
+      outline: none;
+      background: transparent;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+    }
+
+    .task-input:focus {
+      border-bottom-color: #888;
+    }
+
+    /* Simple list styling */
+    .task-list {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    .task-item {
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f5;
+      display: flex;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="paper-container">
+    <h1>My Tasks</h1>
+    <input type="text" class="task-input" id="newTaskInput" placeholder="Write a new task and press Enter...">
+    
+    <ul class="task-list" id="taskList">
+      <li class="task-item">Buy groceries</li>
+      <li class="task-item">Set up Firebase</li>
+    </ul>
+  </div>
+
+</body>
+</html>
