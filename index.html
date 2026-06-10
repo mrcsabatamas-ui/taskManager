@@ -65,29 +65,32 @@
       align-items: center;
     }
 
-    /* NEW: Container to group the checkbox and text together */
     .task-content {
       display: flex;
       align-items: center;
-      gap: 12px; /* Adds space between checkbox and text */
+      gap: 12px; 
     }
 
-    /* NEW: Styling for the checkbox */
     .task-checkbox {
       cursor: pointer;
       width: 18px;
       height: 18px;
-      accent-color: #333; /* Makes the checked state dark instead of default blue */
+      accent-color: #333; 
     }
 
-    /* NEW: Class applied when a task is marked done */
     .completed-text {
       text-decoration: line-through;
       color: #aaa;
     }
 
-    /* Subtle delete button */
-    .delete-btn {
+    /* NEW: Container to group the edit and delete buttons together */
+    .task-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* NEW: Shared styling for both action buttons */
+    .action-btn {
       background: none;
       border: none;
       color: #ccc;
@@ -96,8 +99,13 @@
       transition: color 0.2s;
     }
 
+    /* NEW: Specific hover colors for edit vs delete */
+    .edit-btn:hover {
+      color: #57a1ff; /* Turns blue on hover */
+    }
+
     .delete-btn:hover {
-      color: #ff4757;
+      color: #ff4757; /* Turns red on hover */
     }
   </style>
 </head>
@@ -112,12 +120,9 @@
   </div>
 
   <script type="module">
-    // 1. Import the specific Firebase tools we need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-    // NEW: We added 'updateDoc' to this list so we can modify existing tasks
     import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-    // 2. Your exact Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyC07blTJY22zHAGhhu4fxQjYTf1Oy06YEI",
       authDomain: "paper-tasks.firebaseapp.com",
@@ -127,11 +132,9 @@
       appId: "1:1089128460895:web:ed3d5ab4a44df3777e61ea"
     };
 
-    // 3. Initialize Firebase and Firestore
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Grab the UI elements from the page
     const taskInput = document.getElementById('newTaskInput');
     const taskList = document.getElementById('taskList');
 
@@ -145,43 +148,51 @@
       snapshot.forEach((docSnap) => {
         const taskData = docSnap.data();
         const taskId = docSnap.id;
-        
-        // NEW: Check if task is completed. (Defaults to false if it's an old task that doesn't have this property yet)
         const isCompleted = taskData.completed || false;
         
         const li = document.createElement('li');
         li.className = 'task-item';
 
-        // NEW: Create a wrapper for the checkbox and text
         const contentDiv = document.createElement('div');
         contentDiv.className = 'task-content';
         
-        // NEW: Create the checkbox
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'task-checkbox';
-        checkbox.checked = isCompleted; // Check the box if the database says it's done
-        // When clicked, trigger the toggle function
+        checkbox.checked = isCompleted; 
         checkbox.onchange = () => toggleTaskCompletion(taskId, isCompleted);
         
         const span = document.createElement('span');
         span.textContent = taskData.text;
-        
-        // NEW: If completed, add the strikethrough CSS class
         if (isCompleted) {
           span.classList.add('completed-text');
         }
         
+        // NEW: Create a wrapper for our buttons
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'task-actions';
+
+        // NEW: Create the Edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'action-btn edit-btn';
+        editBtn.innerHTML = '&#9998;'; // This is the HTML code for a nice pencil icon (✎)
+        editBtn.onclick = () => editTask(taskId, taskData.text);
+
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
+        deleteBtn.className = 'action-btn delete-btn';
         deleteBtn.innerHTML = '&times;'; 
         deleteBtn.onclick = () => deleteTask(taskId); 
         
         // Assemble the pieces
         contentDiv.appendChild(checkbox);
         contentDiv.appendChild(span);
+        
+        // NEW: Put both buttons into the actions container
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(deleteBtn);
+
         li.appendChild(contentDiv);
-        li.appendChild(deleteBtn);
+        li.appendChild(actionsDiv); // Put the actions container on the right side of the list item
         taskList.appendChild(li);
       });
     });
@@ -195,7 +206,7 @@
         try {
           await addDoc(tasksCollection, {
             text: taskText,
-            completed: false, // NEW: All new tasks start as incomplete
+            completed: false, 
             createdAt: serverTimestamp() 
           });
         } catch (error) {
@@ -205,11 +216,9 @@
     });
 
     // --- FEATURE 3: Toggle Task Completion ---
-    // NEW FUNCTION: Updates the database when you click the checkbox
     async function toggleTaskCompletion(id, currentStatus) {
       try {
         const taskRef = doc(db, 'tasks', id);
-        // We set completed to be the opposite (!currentStatus) of whatever it is right now
         await updateDoc(taskRef, {
           completed: !currentStatus
         });
@@ -218,7 +227,26 @@
       }
     }
 
-    // --- FEATURE 4: Delete a Task ---
+    // --- FEATURE 4: Edit a Task (NEW) ---
+    async function editTask(id, currentText) {
+      // Open a browser prompt pre-filled with the current text
+      const newText = prompt("Edit your task:", currentText);
+      
+      // Only save if the user typed something new and didn't hit 'Cancel'
+      if (newText !== null && newText.trim() !== "" && newText !== currentText) {
+        try {
+          const taskRef = doc(db, 'tasks', id);
+          // Update just the 'text' property in Firestore
+          await updateDoc(taskRef, {
+            text: newText.trim()
+          });
+        } catch (error) {
+          console.error("Error editing task: ", error);
+        }
+      }
+    }
+
+    // --- FEATURE 5: Delete a Task ---
     async function deleteTask(id) {
       try {
         await deleteDoc(doc(db, 'tasks', id));
