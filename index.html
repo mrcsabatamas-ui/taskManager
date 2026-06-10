@@ -61,8 +61,29 @@
       padding: 12px 0;
       border-bottom: 1px solid #f0f0f5;
       display: flex;
-      justify-content: space-between; /* Pushes text left and button right */
+      justify-content: space-between; 
       align-items: center;
+    }
+
+    /* NEW: Container to group the checkbox and text together */
+    .task-content {
+      display: flex;
+      align-items: center;
+      gap: 12px; /* Adds space between checkbox and text */
+    }
+
+    /* NEW: Styling for the checkbox */
+    .task-checkbox {
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      accent-color: #333; /* Makes the checked state dark instead of default blue */
+    }
+
+    /* NEW: Class applied when a task is marked done */
+    .completed-text {
+      text-decoration: line-through;
+      color: #aaa;
     }
 
     /* Subtle delete button */
@@ -76,7 +97,7 @@
     }
 
     .delete-btn:hover {
-      color: #ff4757; /* Turns slightly red on hover */
+      color: #ff4757;
     }
   </style>
 </head>
@@ -93,7 +114,8 @@
   <script type="module">
     // 1. Import the specific Firebase tools we need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+    // NEW: We added 'updateDoc' to this list so we can modify existing tasks
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
     // 2. Your exact Firebase configuration
     const firebaseConfig = {
@@ -113,54 +135,68 @@
     const taskInput = document.getElementById('newTaskInput');
     const taskList = document.getElementById('taskList');
 
-    // Create a reference to a database collection called 'tasks'
     const tasksCollection = collection(db, 'tasks');
-    // Set up a query to sort tasks so the newest ones appear at the top
     const tasksQuery = query(tasksCollection, orderBy('createdAt', 'desc'));
 
     // --- FEATURE 1: Read and Display Tasks in Real-time ---
-    // onSnapshot listens to the database. Whenever a task is added or deleted, it updates the list instantly.
     onSnapshot(tasksQuery, (snapshot) => {
-      taskList.innerHTML = ''; // Clear the current HTML list so we don't get duplicates
+      taskList.innerHTML = ''; 
 
       snapshot.forEach((docSnap) => {
         const taskData = docSnap.data();
         const taskId = docSnap.id;
         
-        // Create the list item (<li>)
+        // NEW: Check if task is completed. (Defaults to false if it's an old task that doesn't have this property yet)
+        const isCompleted = taskData.completed || false;
+        
         const li = document.createElement('li');
         li.className = 'task-item';
+
+        // NEW: Create a wrapper for the checkbox and text
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'task-content';
         
-        // Create the text span for the task
+        // NEW: Create the checkbox
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'task-checkbox';
+        checkbox.checked = isCompleted; // Check the box if the database says it's done
+        // When clicked, trigger the toggle function
+        checkbox.onchange = () => toggleTaskCompletion(taskId, isCompleted);
+        
         const span = document.createElement('span');
         span.textContent = taskData.text;
         
-        // Create the delete button
+        // NEW: If completed, add the strikethrough CSS class
+        if (isCompleted) {
+          span.classList.add('completed-text');
+        }
+        
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
-        deleteBtn.innerHTML = '&times;'; // This creates a nice clean '×' symbol
-        deleteBtn.onclick = () => deleteTask(taskId); // Attach the delete function
+        deleteBtn.innerHTML = '&times;'; 
+        deleteBtn.onclick = () => deleteTask(taskId); 
         
-        // Put the text and button inside the list item, then put the list item on the page
-        li.appendChild(span);
+        // Assemble the pieces
+        contentDiv.appendChild(checkbox);
+        contentDiv.appendChild(span);
+        li.appendChild(contentDiv);
         li.appendChild(deleteBtn);
         taskList.appendChild(li);
       });
     });
 
     // --- FEATURE 2: Add a New Task ---
-    // Listen for typing in the input box
     taskInput.addEventListener('keypress', async (e) => {
-      // If they press 'Enter' and the box isn't empty
       if (e.key === 'Enter' && taskInput.value.trim() !== '') {
         const taskText = taskInput.value.trim();
-        taskInput.value = ''; // Clear the input box immediately for a smooth experience
+        taskInput.value = ''; 
         
         try {
-          // Save the task to Firestore
           await addDoc(tasksCollection, {
             text: taskText,
-            createdAt: serverTimestamp() // This records the exact server time
+            completed: false, // NEW: All new tasks start as incomplete
+            createdAt: serverTimestamp() 
           });
         } catch (error) {
           console.error("Error adding task: ", error);
@@ -168,10 +204,23 @@
       }
     });
 
-    // --- FEATURE 3: Delete a Task ---
+    // --- FEATURE 3: Toggle Task Completion ---
+    // NEW FUNCTION: Updates the database when you click the checkbox
+    async function toggleTaskCompletion(id, currentStatus) {
+      try {
+        const taskRef = doc(db, 'tasks', id);
+        // We set completed to be the opposite (!currentStatus) of whatever it is right now
+        await updateDoc(taskRef, {
+          completed: !currentStatus
+        });
+      } catch (error) {
+        console.error("Error updating task: ", error);
+      }
+    }
+
+    // --- FEATURE 4: Delete a Task ---
     async function deleteTask(id) {
       try {
-        // Find the specific task document by its ID and delete it
         await deleteDoc(doc(db, 'tasks', id));
       } catch (error) {
         console.error("Error deleting task: ", error);
