@@ -23,7 +23,6 @@
       min-height: 80vh;
       padding: 40px;
       border: 1px solid #e0e0e0;
-      /* Subtle solid shadow for a flat paper feel */
       box-shadow: 4px 4px 0px rgba(0,0,0,0.05); 
     }
 
@@ -62,7 +61,22 @@
       padding: 12px 0;
       border-bottom: 1px solid #f0f0f5;
       display: flex;
+      justify-content: space-between; /* Pushes text left and button right */
       align-items: center;
+    }
+
+    /* Subtle delete button */
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 18px;
+      transition: color 0.2s;
+    }
+
+    .delete-btn:hover {
+      color: #ff4757; /* Turns slightly red on hover */
     }
   </style>
 </head>
@@ -73,10 +87,96 @@
     <input type="text" class="task-input" id="newTaskInput" placeholder="Write a new task and press Enter...">
     
     <ul class="task-list" id="taskList">
-      <li class="task-item">Buy groceries</li>
-      <li class="task-item">Set up Firebase</li>
-    </ul>
+      </ul>
   </div>
 
+  <script type="module">
+    // 1. Import the specific Firebase tools we need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+    // 2. Your exact Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyC07blTJY22zHAGhhu4fxQjYTf1Oy06YEI",
+      authDomain: "paper-tasks.firebaseapp.com",
+      projectId: "paper-tasks",
+      storageBucket: "paper-tasks.firebasestorage.app",
+      messagingSenderId: "1089128460895",
+      appId: "1:1089128460895:web:ed3d5ab4a44df3777e61ea"
+    };
+
+    // 3. Initialize Firebase and Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Grab the UI elements from the page
+    const taskInput = document.getElementById('newTaskInput');
+    const taskList = document.getElementById('taskList');
+
+    // Create a reference to a database collection called 'tasks'
+    const tasksCollection = collection(db, 'tasks');
+    // Set up a query to sort tasks so the newest ones appear at the top
+    const tasksQuery = query(tasksCollection, orderBy('createdAt', 'desc'));
+
+    // --- FEATURE 1: Read and Display Tasks in Real-time ---
+    // onSnapshot listens to the database. Whenever a task is added or deleted, it updates the list instantly.
+    onSnapshot(tasksQuery, (snapshot) => {
+      taskList.innerHTML = ''; // Clear the current HTML list so we don't get duplicates
+
+      snapshot.forEach((docSnap) => {
+        const taskData = docSnap.data();
+        const taskId = docSnap.id;
+        
+        // Create the list item (<li>)
+        const li = document.createElement('li');
+        li.className = 'task-item';
+        
+        // Create the text span for the task
+        const span = document.createElement('span');
+        span.textContent = taskData.text;
+        
+        // Create the delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '&times;'; // This creates a nice clean '×' symbol
+        deleteBtn.onclick = () => deleteTask(taskId); // Attach the delete function
+        
+        // Put the text and button inside the list item, then put the list item on the page
+        li.appendChild(span);
+        li.appendChild(deleteBtn);
+        taskList.appendChild(li);
+      });
+    });
+
+    // --- FEATURE 2: Add a New Task ---
+    // Listen for typing in the input box
+    taskInput.addEventListener('keypress', async (e) => {
+      // If they press 'Enter' and the box isn't empty
+      if (e.key === 'Enter' && taskInput.value.trim() !== '') {
+        const taskText = taskInput.value.trim();
+        taskInput.value = ''; // Clear the input box immediately for a smooth experience
+        
+        try {
+          // Save the task to Firestore
+          await addDoc(tasksCollection, {
+            text: taskText,
+            createdAt: serverTimestamp() // This records the exact server time
+          });
+        } catch (error) {
+          console.error("Error adding task: ", error);
+        }
+      }
+    });
+
+    // --- FEATURE 3: Delete a Task ---
+    async function deleteTask(id) {
+      try {
+        // Find the specific task document by its ID and delete it
+        await deleteDoc(doc(db, 'tasks', id));
+      } catch (error) {
+        console.error("Error deleting task: ", error);
+      }
+    }
+  </script>
 </body>
 </html>
